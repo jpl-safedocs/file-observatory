@@ -1,0 +1,42 @@
+.help-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  .help-title-container {
+    width: 100%;
+    color: rgb(67, 67, 67);
+    text-align: center;
+    background-color: white;
+  }
+
+  .help-body-container {
+    background-color: white;
+    border-radius: 5px;
+    margin: 30px;
+    padding: 30px;
+  }
+
+  .version-info {
+    display: flex;
+    flex-direction: row;
+  }
+  .version-number-text {
+    background-color: #1976d2;
+    width: 100px;
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+    margin-left: 10px;
+    text-align: center;
+    font-weight: 800;
+  }
+
+  a,
+  span.link {
+    color: #e57c00;
+    font-weight: 800;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}

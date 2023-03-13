@@ -1,0 +1,127 @@
+{
+  "name": "safedocs-app",
+  "version": "1.4.0",
+  "private": true,
+  "author": "NASA JPL",
+  "description": "DARPA Safedocs file observatory",
+  "homepage": "./",
+  "main": "./public/electron.js",
+  "build": {
+    "appId": "com.electron.safedocs-observatory",
+    "productName": "Safedocs Observatory",
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "assets/icon.icns"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "files": [
+      "build/**/*",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "extraResources": "docker"
+  },
+  "dependencies": {
+    "@craco/craco": "^6.4.3",
+    "@deck.gl/aggregation-layers": "^8.6.6",
+    "@deck.gl/core": "^8.6.6",
+    "@deck.gl/layers": "^8.6.6",
+    "@deck.gl/react": "^8.6.6",
+    "@devexpress/dx-react-core": "3.0.0-beta.1",
+    "@devexpress/dx-react-grid": "3.0.0-beta.1",
+    "@devexpress/dx-react-grid-material-ui": "3.0.0-beta.1",
+    "@emotion/react": "^11.7.1",
+    "@emotion/styled": "^11.6.0",
+    "@mui/icons-material": "^5.2.1",
+    "@mui/material": "^5.2.3",
+    "@mui/styles": "^5.2.3",
+    "@mui/system": "^5.2.4",
+    "@testing-library/jest-dom": "^5.11.4",
+    "@testing-library/react": "^11.1.0",
+    "@testing-library/user-event": "^12.1.10",
+    "@types/jest": "^26.0.15",
+    "@types/node": "^12.0.0",
+    "@types/react": "^17.0.0",
+    "@types/react-dom": "^17.0.0",
+    "axios": "^0.24.0",
+    "electron-dl": "^3.3.0",
+    "maplibre-gl": "^2.1.0",
+    "msw": "^0.36.8",
+    "react": "^17.0.2",
+    "react-copy-to-clipboard": "^5.0.4",
+    "react-dnd": "^14.0.5",
+    "react-dnd-html5-backend": "^14.1.0",
+    "react-dom": "^17.0.2",
+    "react-map-gl": "^6.1.19",
+    "react-reorder": "^3.0.0-alpha.7",
+    "react-scripts": "4.0.3",
+    "react-window": "^1.8.6",
+    "recharts": "^2.1.8",
+    "typescript": "^4.1.2",
+    "usehooks-ts": "2.1",
+    "web-vitals": "^1.0.1",
+    "zustand": "^3.6.7",
+    "zustand-persist": "^0.4.0"
+  },
+  "scripts": {
+    "react-start": "craco start",
+    "react-build": "craco build",
+    "build": "yarn version && yarn react-build && yarn electron-build",
+    "electron-build": "electron-builder -mwl",
+    "test": "craco test",
+    "eject": "react-scripts eject",
+    "electron:start": "concurrently -k \"cross-env BROWSER=none yarn react-start\" \"wait-on http://localhost:3000 && electronmon .\"",
+    "electron-pack": "build --em.main=build/electron.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "postinstall": "electron-builder install-app-deps",
+    "preelectron-pack": "yarn build"
+  },
+  "electronmon": {
+    "patterns": [
+      "!dist/**",
+      "!build/**"
+    ]
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      "last 1 electron version",
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 electron version",
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@deck.gl/test-utils": "^8.6.8",
+    "@types/react-copy-to-clipboard": "^5.0.2",
+    "@types/react-window": "^1.8.5",
+    "concurrently": "^6.4.0",
+    "cross-env": "^7.0.3",
+    "electron": "^16.0.3",
+    "electron-builder": "^22.14.5",
+    "electron-is-dev": "^2.0.0",
+    "electronmon": "^2.0.2",
+    "node-sass": "^6.0.1",
+    "sass": "^1.44.0",
+    "wait-on": "^6.0.0"
+  }
+}

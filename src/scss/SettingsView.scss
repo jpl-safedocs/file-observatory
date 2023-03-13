@@ -1,0 +1,54 @@
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  .titleCard {
+    background-color: white;
+    color: #525252;
+    width: 100%;
+    text-align: center;
+    padding: 1% 0 1% 0;
+  }
+
+  .configuration-container {
+    min-width: 600px;
+    width: calc(100% - 100px);
+    padding: 15px 35px;
+    background-color: white;
+    margin: 30px;
+    border-radius: 5px;
+  }
+
+  .config-btn {
+    margin: 5px;
+  }
+
+  .setting-field {
+    width: 100%;
+    margin-bottom: 30px;
+  }
+
+  div.column-order {
+    border: 1px solid #c4c4c4;
+    border-radius: 5px;
+    padding: 10px;
+  }
+}
+
+#column-order-label {
+  width: fit-content;
+  margin-bottom: -9.5px;
+  margin-left: 8px;
+  background: white;
+  padding: 0px 4px;
+  font-size: 13px;
+}
+
+span.delete-index-btn {
+  cursor: pointer;
+  padding: 5px;
+  &:hover {
+    color: red;
+  }
+}

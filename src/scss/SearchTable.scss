@@ -1,0 +1,74 @@
+table.MuiTable-root {
+  thead tr th {
+    padding-top: 0;
+    padding-bottom: 0;
+    font-family: "Roboto Mono", monospace ip !important;
+  }
+
+  div.MuiOutlinedInput-root {
+    background: white;
+    width: 15ch;
+    height: 5ch;
+    transition: all 0.5s ease;
+
+    &.Mui-focused {
+      width: 40ch;
+    }
+  }
+}
+
+span.copy-detail-text {
+  cursor: pointer;
+  font-family: "Roboto Mono", monospace !important;
+  &:hover {
+    background-color: rgba(255, 255, 0, 0.75);
+    outline: 2px solid rgba(255, 255, 0, 0.75);
+  }
+}
+
+.tooltip-hover {
+  .search-term {
+    // text-decoration: underline;
+    color: #2459d5;
+    font-weight: bolder;
+    font-family: "Roboto Mono", monospace !important;
+  }
+}
+
+.copy-detail-text {
+  word-break: break-word;
+  .search-term {
+    text-decoration: underline;
+    font-weight: bold;
+    color: #d3742f;
+    font-family: "Roboto Mono", monospace !important;
+  }
+}
+
+.cell-text.found-term {
+  // text-decoration: underline;
+  color: #2459d5;
+  font-weight: bold;
+  font-family: "Roboto Mono", monospace !important;
+}
+
+.css-1ex1afd-MuiTableCell-root {
+  font-family: "Roboto Mono", monospace !important;
+}
+
+.results-and-search {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: 40%;
+}
+
+.search-bar {
+  padding-left: 3.25%;
+}
+
+.mui-search {
+  height: 50%;
+  // background-color: white;
+}

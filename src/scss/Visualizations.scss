@@ -1,0 +1,109 @@
+div.MuiTabs-root.viz-tabs {
+  min-height: auto;
+  font-family: "Roboto Mono", monospace !important;
+
+  span.MuiTabs-indicator {
+    background-color: white;
+  }
+
+  button.MuiButtonBase-root {
+    padding: 5px;
+    min-height: auto;
+    flex: 1;
+
+    &.Mui-selected {
+      background-color: rgb(255 255 255 / 25%);
+    }
+
+    span {
+      color: black;
+    }
+  }
+}
+
+div.field-count-table table.data-table {
+  td.long-label,
+  tbody tr td {
+    user-select: auto;
+  }
+}
+
+table.data-table {
+  display: flex;
+  flex-direction: column;
+  background-color: #f3f3f3;
+  border-collapse: collapse;
+  width: 100%;
+  font-family: "Roboto Mono", monospace !important;
+
+  span.long-label {
+    user-select: all;
+  }
+
+  span.long-label::-webkit-scrollbar {
+    display: none;
+  }
+
+  thead,
+  tbody {
+    display: flex;
+    flex-direction: column;
+  }
+
+  tbody {
+    max-height: 25vh;
+    overflow: scroll;
+  }
+
+  thead tr {
+    display: flex;
+    th {
+      flex: 1;
+      font-size: 12px;
+    }
+  }
+
+  tbody tr {
+    display: flex;
+    background-color: white;
+    td {
+      flex: 1;
+      user-select: all;
+    }
+  }
+
+  th {
+    border: 1px solid #d8d8d8;
+    text-align: left;
+    padding: 2px;
+  }
+
+  td {
+    border: 1px solid #f3f3f3;
+    text-align: left;
+    padding: 2px;
+  }
+
+  tr:nth-child(odd) td {
+    border-right-color: white;
+    border-left-color: white;
+  }
+
+  th {
+    background: #d8d8d8;
+  }
+
+  tbody tr:nth-child(even) {
+    background-color: #f3f3f3;
+  }
+}
+
+.table-select-field {
+  font-family: "Roboto Mono", monospace;
+
+  .MuiSelect-select {
+    &.MuiSelect-outlined {
+      padding: 5px 25px;
+    }
+  }
+}
