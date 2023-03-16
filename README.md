@@ -209,3 +209,6 @@ $ yarn build
 ```
 This will prompt you to enter the new version number, which will automatically be added as a git tag, and then will proceed to generate a local build.
 
+#Contributors 
+- Mike Milano
+
