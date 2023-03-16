@@ -226,6 +226,7 @@ export const persistentProps: NonFunctionPropertyNames<Store>[] = [
   "creatorTool",
   "creatorToolName",
   "crashMetricName",
+  "showFailedAggregationAlerts"
 ];
 
 export const persistentNonStoredProps: NonFunctionPropertyNames<Store>[] = [
@@ -658,11 +659,14 @@ const useStore = create<Store>(
               // set({ aggregations: {} });
             }));
         }
-        Promise.all(requests).then(() => {
-          if (skippedList.length > 0 && get().showFailedAggregationAlerts) {
-            alert("Error fetching aggregation filters for filter list. The following fields were skipped: " + skippedList.join(", "));
-          }
-        });
+
+        if (get().showFailedAggregationAlerts) {
+          Promise.all(requests).then(() => {
+            if (skippedList.length > 0) {
+              alert("Error fetching aggregation filters for filter list. The following fields were skipped: " + skippedList.join(", "));
+            }
+          });
+        }
       },
       fetchSingleFilterAggregation: async (field, searchTerm) => {
         let searchURL = get().getSearchURL();
