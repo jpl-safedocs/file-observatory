@@ -1,4 +1,5 @@
 # DARPA Safedocs File Observatory
+[![DOI](https://zenodo.org/badge/613576432.svg)](https://zenodo.org/badge/latestdoi/613576432)
 
 ![Example of the Safedocs File Observatory App](docs/media/observatory_app.png)
 
