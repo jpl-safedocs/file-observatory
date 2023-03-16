@@ -40,7 +40,7 @@ import useStore from "../utils/store";
 // @ts-ignore
 const { ipcRenderer } = window.require("electron");
 
-interface Props {}
+interface Props { }
 
 const DownloadButton: FC<Props> = () => {
   const [openOptions, setOpenOptions] = useState(false);
@@ -52,7 +52,11 @@ const DownloadButton: FC<Props> = () => {
   const totalDocumentCount = useStore((state) => state.totalDocumentCount);
   const getRandomDocumentsDownloadPaths = useStore((state) => state.getRandomDocumentsDownloadPaths);
   const getDocumentsDownloadPaths = useStore((state) => state.getDocumentsDownloadPaths);
-  const useRawFileLocation = useStore((state) => state.useRawFileLocation);
+  const downloadMode = useStore((state) => state.downloadMode);
+
+  const s3BucketName = useStore((state) => state.s3BucketName);
+  const s3AccessKeyID = useStore((state) => state.s3AccessKeyID);
+  const s3SecretAccessKey = useStore((state) => state.s3SecretAccessKey);
 
   const [downloadMessage, setDownloadMessage] = useState("");
 
@@ -104,9 +108,12 @@ const DownloadButton: FC<Props> = () => {
           <MenuItem
             onClick={() => {
               const urls = getDocumentsDownloadPaths(selectedDocuments);
-              console.log("DOWNLOADING", selectedDocuments, urls);
               ipcRenderer.send("download", {
-                useRawFileLocation: useRawFileLocation,
+                useRawFileLocation: downloadMode === "local",
+                useS3: downloadMode === "s3",
+                s3BucketName,
+                s3AccessKeyID,
+                s3SecretAccessKey,
                 urls,
               });
               setSelectedDocuments([]);
@@ -123,9 +130,12 @@ const DownloadButton: FC<Props> = () => {
                 key={`count-${count}`}
                 onClick={() => {
                   getRandomDocumentsDownloadPaths(count).then((urls: string[]) => {
-                    console.log("DOWNLOAD RANDOM", count, urls);
                     ipcRenderer.send("download", {
-                      useRawFileLocation: useRawFileLocation,
+                      useRawFileLocation: downloadMode === "local",
+                      useS3: downloadMode === "s3",
+                      s3BucketName,
+                      s3AccessKeyID,
+                      s3SecretAccessKey,
                       urls,
                     });
                   });

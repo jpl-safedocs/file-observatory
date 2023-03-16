@@ -49,7 +49,12 @@ const path = window.require("path");
 
 const HexEditor: FC = () => {
   const rawFileLocation = useStore((state) => state.rawFileLocation);
-  const useRawFileLocation = useStore((state) => state.useRawFileLocation);
+  const downloadMode = useStore((state) => state.downloadMode);
+
+  const s3BucketName = useStore((state) => state.s3BucketName);
+  const s3AccessKeyID = useStore((state) => state.s3AccessKeyID);
+  const s3SecretAccessKey = useStore((state) => state.s3SecretAccessKey);
+
   const selectedIndices = useStore((state) => state.selectedDocuments);
   const getDocumentsDownloadPaths = useStore((state) => state.getDocumentsDownloadPaths);
 
@@ -159,7 +164,11 @@ const HexEditor: FC = () => {
                   url: hexEditorFile,
                   path: hexEditorFile,
                   outputFile: path.join(hexEditorFileDirectory, `${hexEditorFile.split("/").pop()}.html`),
-                  useRawFileLocation: useRawFileLocation || !hexEditorFile.startsWith("http"),
+                  useRawFileLocation: downloadMode === "local" && !hexEditorFile.startsWith("http"),
+                  useS3: downloadMode === "s3",
+                  s3BucketName,
+                  s3AccessKeyID,
+                  s3SecretAccessKey,
                 });
                 setHexEditorLoading(true);
               }

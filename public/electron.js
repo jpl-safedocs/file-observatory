@@ -1,4 +1,41 @@
-const { app, BrowserWindow, protocol, ipcMain, dialog, shell, Menu } = require("electron");
+/**
+ * Copyright (c) 2018-2023 California Institute of Technology ("Caltech"). U.S.
+ * Government sponsorship acknowledged.
+ * All rights reserved.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * * Neither the name of Caltech nor its operating division, the Jet Propulsion
+ *   Laboratory, nor the names of its contributors may be used to endorse or
+ *   promote products derived from this software without specific prior written
+ *   permission.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+const {
+  app,
+  BrowserWindow,
+  protocol,
+  ipcMain,
+  dialog,
+  shell,
+  Menu,
+} = require("electron");
 const { exec, spawn } = require("child_process");
 const EventEmitter = require("events");
 
@@ -11,6 +48,7 @@ const emitter = new EventEmitter();
 
 const path = require("path");
 const url = require("url");
+const AWS = require("aws-sdk");
 
 emitter.setMaxListeners(100);
 
@@ -30,27 +68,16 @@ const createWindow = () => {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: true,
       contextIsolation: false,
-      // nativeWindowOpen: true,
       webSecurity: false,
     },
   });
 
   window.maximize();
 
-  const appURL = app.isPackaged ? `file://${__dirname}/index.html` : "http://localhost:3000";
+  const appURL = app.isPackaged
+    ? `file://${__dirname}/index.html`
+    : "http://localhost:3000";
   window.loadURL(appURL);
-
-  // const template = [
-  //   {
-  //     label: "Info",
-  //     submenu: [{ role: "about" }, { role: "reload" }, { role: "close" }, { role: "copy" }, { role: "paste" }],
-  //   },
-  // ];
-  // if (!app.isPackaged) {
-  //   template[0].submenu.push({ role: "toggledevtools" });
-  // }
-  // const menu = Menu.buildFromTemplate(template);
-  // Menu.setApplicationMenu(menu);
 };
 
 const setupLocalFilesNormalizerProxy = () => {
@@ -91,15 +118,22 @@ app.whenReady().then(() => {
 
     let files = fs.readdirSync(normalizedPath);
     if (info.extension) {
-      files = files.filter((file) => file && typeof file === "string" && file.endsWith(info.extension));
+      files = files.filter(
+        (file) =>
+          file && typeof file === "string" && file.endsWith(info.extension)
+      );
     }
-    window.webContents.send("listed-dir", { files: files, trigger: info.trigger });
+    window.webContents.send("listed-dir", {
+      files: files,
+      trigger: info.trigger,
+    });
   });
 
   ipcMain.on("generate-hex-editor-file", (event, info) => {
     let normalizedPath = path.normalize(info.path);
 
-    const fileExists = !info.useRawFileLocation || fs.existsSync(normalizedPath);
+    const fileExists =
+      !info.useRawFileLocation || fs.existsSync(normalizedPath);
     if (!fileExists) {
       window.webContents.send("generated-hex-file", {
         path: info.outputFile,
@@ -118,14 +152,24 @@ app.whenReady().then(() => {
       });
     }
 
-    let dockerScript = app.isPackaged && process.platform === "darwin" ? "/usr/local/bin/docker" : "docker";
+    let dockerScript =
+      app.isPackaged && process.platform === "darwin"
+        ? "/usr/local/bin/docker"
+        : "docker";
 
-    let dockerPath = app.isPackaged ? path.join(process.resourcesPath, "docker") : path.join(__dirname, "..", "docker");
-    let buildCommand = `${dockerScript} build -t file-observatory-app-polyfile "${path.join(dockerPath, "polyfile")}"`;
+    let dockerPath = app.isPackaged
+      ? path.join(process.resourcesPath, "docker")
+      : path.join(__dirname, "..", "docker");
+    let buildCommand = `${dockerScript} build -t file-observatory-app-polyfile "${path.join(
+      dockerPath,
+      "polyfile"
+    )}"`;
 
-    exec(buildCommand, (err, stdout, stderr) => {
+    exec(buildCommand, async (err, stdout, stderr) => {
       if (err) {
-        console.error(`Docker exited while trying to build polyfile container: ${buildCommand}`);
+        console.error(
+          `Docker exited while trying to build polyfile container: ${buildCommand}`
+        );
         window.webContents.send("generated-hex-file", {
           path: info.outputFile,
           error: true,
@@ -136,13 +180,43 @@ app.whenReady().then(() => {
 
       let downloadedFilePath = "";
 
-      if (!info.useRawFileLocation) {
-        download(BrowserWindow.getFocusedWindow(), info.url, { directory: tempDir });
-        downloadedFilePath = path.join(tempDir, info.url.split("/")[info.url.split("/").length - 1]);
+      if (info.useS3) {
+        const s3 = new AWS.S3();
+        AWS.config.update({
+          accessKeyId: info.s3AccessKeyID,
+          secretAccessKey: info.s3SecretAccessKey,
+        });
+
+        await s3
+          .getObject({
+            Bucket: info.s3Bucket,
+            Key: info.url,
+          })
+          .promise()
+          .then(async (data) => {
+            downloadedFilePath = path.join(
+              tempDir,
+              normalizedPath.split(path.sep)[
+                normalizedPath.split(path.sep).length - 1
+              ]
+            );
+
+            await fs.writeFile(downloadedFilePath, data);
+          });
+      } else if (!info.useRawFileLocation) {
+        download(BrowserWindow.getFocusedWindow(), info.url, {
+          directory: tempDir,
+        });
+        downloadedFilePath = path.join(
+          tempDir,
+          info.url.split("/")[info.url.split("/").length - 1]
+        );
       } else {
         downloadedFilePath = path.join(
           tempDir,
-          normalizedPath.split(path.sep)[normalizedPath.split(path.sep).length - 1]
+          normalizedPath.split(path.sep)[
+            normalizedPath.split(path.sep).length - 1
+          ]
         );
         if (fs.existsSync(normalizedPath)) {
           fs.copyFileSync(normalizedPath, downloadedFilePath);
@@ -150,33 +224,50 @@ app.whenReady().then(() => {
       }
 
       let polyfileCommand = `${dockerScript} run -v "${tempDir}":"${tempDir}" -a stdin -a stdout file-observatory-app-polyfile --html "${downloadedFilePath}.html" "${downloadedFilePath}" > /dev/null`;
-      exec(polyfileCommand, { timeout: 10 * 60 * 1000 }, (err, stdout, stderr) => {
-        if (err) {
-          console.error("Polyfile Error:", err);
+      exec(
+        polyfileCommand,
+        { timeout: 10 * 60 * 1000 },
+        (err, stdout, stderr) => {
+          if (err) {
+            console.error("Polyfile Error:", err);
+            window.webContents.send("generated-hex-file", {
+              path: info.outputFile,
+              error: true,
+              message: `Polyfile exited while running: ${polyfileCommand}`,
+            });
+            return;
+          }
+
+          let htmlOutput = fs.readFileSync(`${downloadedFilePath}.html`, {
+            encoding: "utf8",
+            flag: "r",
+          });
+          htmlOutput = htmlOutput.replace(
+            '"object"==typeof module&&"object"==typeof module.exports',
+            "false"
+          );
+          fs.writeFileSync(`${downloadedFilePath}.html`, htmlOutput);
+
+          fs.rename(`${downloadedFilePath}.html`, info.outputFile, (err) => {
+            if (err) {
+              console.error(
+                `Error moving Polyfile output file from ${downloadedFilePath}.html to ${info.outputFile}`
+              );
+            }
+          });
+          fs.rm(downloadedFilePath, (err) => {
+            if (err) {
+              console.error(
+                `Error removing temp downloaded file ${downloadedFilePath}`
+              );
+            }
+          });
           window.webContents.send("generated-hex-file", {
             path: info.outputFile,
-            error: true,
-            message: `Polyfile exited while running: ${polyfileCommand}`,
+            error: false,
           });
-          return;
         }
-
-        let htmlOutput = fs.readFileSync(`${downloadedFilePath}.html`, { encoding: "utf8", flag: "r" });
-        htmlOutput = htmlOutput.replace('"object"==typeof module&&"object"==typeof module.exports', "false");
-        fs.writeFileSync(`${downloadedFilePath}.html`, htmlOutput);
-
-        fs.rename(`${downloadedFilePath}.html`, info.outputFile, (err) => {
-          if (err) {
-            console.error(`Error moving Polyfile output file from ${downloadedFilePath}.html to ${info.outputFile}`);
-          }
-        });
-        fs.rm(downloadedFilePath, (err) => {
-          if (err) {
-            console.error(`Error removing temp downloaded file ${downloadedFilePath}`);
-          }
-        });
-        window.webContents.send("generated-hex-file", { path: info.outputFile, error: false });
-      });
+      );
     });
   });
 
@@ -185,12 +276,18 @@ app.whenReady().then(() => {
       .showOpenDialog({
         properties: ["openFile"],
         defaultPath: info.defaultPath,
-        filters: info.fileTypes && info.fileTypes.length ? [{ name: "Files", extensions: info.fileTypes }] : [],
+        filters:
+          info.fileTypes && info.fileTypes.length
+            ? [{ name: "Files", extensions: info.fileTypes }]
+            : [],
         buttonLabel: "Open",
       })
       .then((response) => {
         if (!response.canceled) {
-          window.webContents.send("chosen-file", { path: response.filePaths[0], trigger: info.trigger });
+          window.webContents.send("chosen-file", {
+            path: response.filePaths[0],
+            trigger: info.trigger,
+          });
         }
       });
   });
@@ -204,7 +301,10 @@ app.whenReady().then(() => {
       })
       .then((response) => {
         if (!response.canceled) {
-          window.webContents.send("chosen-directory", { path: response.filePaths[0], trigger: info.trigger });
+          window.webContents.send("chosen-directory", {
+            path: response.filePaths[0],
+            trigger: info.trigger,
+          });
         }
       });
   });
@@ -247,7 +347,10 @@ app.whenReady().then(() => {
       config["timestamp"] = new Date().getTime();
       fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
     }
-    window.webContents.send("config-syncd", { config: config, trigger: info.trigger });
+    window.webContents.send("config-syncd", {
+      config: config,
+      trigger: info.trigger,
+    });
   });
 
   ipcMain.on("load-config", (event, info) => {
@@ -266,7 +369,8 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on("download", (event, info) => {
-    info.onProgress = (status) => window.webContents.send("download progress", status);
+    info.onProgress = (status) =>
+      window.webContents.send("download progress", status);
 
     dialog
       .showOpenDialog({
@@ -277,15 +381,43 @@ app.whenReady().then(() => {
         if (!response.canceled) {
           if (info.urls) {
             info.urls.map((url) => {
-              if (!info.useRawFileLocation) {
-                download(BrowserWindow.getFocusedWindow(), url, { directory: response.filePaths[0] }).then((dl) =>
+              if (info.useS3) {
+                const s3 = new AWS.S3();
+                AWS.config.update({
+                  accessKeyId: info.s3AccessKeyID,
+                  secretAccessKey: info.s3SecretAccessKey,
+                });
+
+                s3.getObject({
+                  Bucket: info.s3Bucket,
+                  Key: url,
+                })
+                  .promise()
+                  .then((data) => {
+                    let destinationPath = path.join(
+                      response.filePaths[0],
+                      url.split("/")[url.split("/").length - 1]
+                    );
+
+                    fs.writeFile(destinationPath, data);
+                  });
+              } else if (!info.useRawFileLocation) {
+                download(BrowserWindow.getFocusedWindow(), url, {
+                  directory: response.filePaths[0],
+                }).then((dl) =>
                   window.webContents.send("download complete", dl.getSavePath())
                 );
               } else {
-                let destinationPath = path.join(response.filePaths[0], url.split("/")[url.split("/").length - 1]);
+                let destinationPath = path.join(
+                  response.filePaths[0],
+                  url.split("/")[url.split("/").length - 1]
+                );
                 if (fs.existsSync(url)) {
                   fs.copyFileSync(url, destinationPath);
-                  window.webContents.send("download complete", response.filePaths[0]);
+                  window.webContents.send(
+                    "download complete",
+                    response.filePaths[0]
+                  );
                 }
               }
             });
