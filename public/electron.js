@@ -202,6 +202,9 @@ app.whenReady().then(() => {
             );
 
             await fs.writeFile(downloadedFilePath, data);
+          })
+          .catch((err) => {
+            console.error(err);
           });
       } else if (!info.useRawFileLocation) {
         download(BrowserWindow.getFocusedWindow(), info.url, {
@@ -400,6 +403,13 @@ app.whenReady().then(() => {
                     );
 
                     fs.writeFile(destinationPath, data);
+                    window.webContents.send(
+                      "download complete",
+                      destinationPath
+                    );
+                  })
+                  .catch((err) => {
+                    console.error(err);
                   });
               } else if (!info.useRawFileLocation) {
                 download(BrowserWindow.getFocusedWindow(), url, {
@@ -414,10 +424,7 @@ app.whenReady().then(() => {
                 );
                 if (fs.existsSync(url)) {
                   fs.copyFileSync(url, destinationPath);
-                  window.webContents.send(
-                    "download complete",
-                    response.filePaths[0]
-                  );
+                  window.webContents.send("download complete", destinationPath);
                 }
               }
             });
