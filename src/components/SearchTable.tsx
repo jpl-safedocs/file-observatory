@@ -200,9 +200,13 @@ const RowColumnDetail = ({ column, value }: { column: string; value: string }) =
 const RowDetail = ({ row }: { row: any }) => {
   return (
     <div>
-      {Object.entries(row).map(([column, value], i) => (
-        <RowColumnDetail key={`${column}-${i}`} column={column} value={value as string} />
-      ))}
+      {Object.entries(row).map(([column, value], i) => {
+        if (Array.isArray(value)) {
+          value = `[${value.join(", ")}]`;
+        }
+
+        return <RowColumnDetail key={`${column}-${i}`} column={column} value={value as string} />;
+      })}
     </div>
   );
 };
