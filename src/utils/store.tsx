@@ -84,10 +84,8 @@ export type Store = {
   setDownloadMode: (downloadMode: DownloadMode) => void;
   s3BucketName: string;
   setS3BucketName: (s3BucketName: string) => void;
-  s3AccessKeyID: string;
-  setS3AccessKeyID: (s3AccessKeyID: string) => void;
-  s3SecretAccessKey: string;
-  setS3SecretAccessKey: (s3SecretAccessKey: string) => void;
+  awsProfileName: string;
+  setAWSProfileName: (awsProfileName: string) => void;
   index: string;
   validIndex: boolean;
   loadingIndex: boolean;
@@ -186,6 +184,8 @@ export type Store = {
   setCreatorToolName: (creatorToolName: string) => void;
   crashMetricName: string;
   setCrashMetricName: (crashMetricName: string) => void;
+  showFailedAggregationAlerts: boolean;
+  setShowFailedAggregationAlerts: (showFailedAggregationAlerts: boolean) => void;
 };
 
 type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
@@ -200,8 +200,7 @@ export const persistentProps: NonFunctionPropertyNames<Store>[] = [
   "rawFileLocation",
   "downloadMode",
   "s3BucketName",
-  "s3AccessKeyID",
-  "s3SecretAccessKey",
+  "awsProfileName",
   "index",
   "activeField",
   "activeYField",
@@ -290,10 +289,8 @@ const useStore = create<Store>(
       setDownloadMode: (downloadMode) => set(() => ({ downloadMode })),
       s3BucketName: "",
       setS3BucketName: (s3BucketName) => set(() => ({ s3BucketName })),
-      s3AccessKeyID: "",
-      setS3AccessKeyID: (s3AccessKeyID) => set(() => ({ s3AccessKeyID })),
-      s3SecretAccessKey: "",
-      setS3SecretAccessKey: (s3SecretAccessKey) => set(() => ({ s3SecretAccessKey })),
+      awsProfileName: "",
+      setAWSProfileName: (awsProfileName) => set(() => ({ awsProfileName })),
       index: "",
       validIndex: false,
       loadingIndex: false,
@@ -606,7 +603,7 @@ const useStore = create<Store>(
           aggregations: {
             my_sample: {
               sampler: {
-                shard_size: 10000,
+                shard_size: 100000,
               },
               aggregations: {
                 keywords: {
@@ -641,11 +638,14 @@ const useStore = create<Store>(
         if (!searchURL) {
           return;
         }
+
+        let skippedList: string[] = [];
+        let requests = [];
         for (let i = 0; i < fields.length; i += 10) {
           let aggQuery = getAggQuery(groupedFilters, fields.slice(i, i + 10), get().searchTerm, queryOverride);
           aggQuery.size = 0;
 
-          axios
+          requests.push(axios
             .post(searchURL, aggQuery)
             .then((response) => {
               let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
@@ -653,9 +653,16 @@ const useStore = create<Store>(
             })
             .catch((err) => {
               console.error("Error fetching aggregation filters", err, aggQuery);
-              set({ aggregations: {} });
-            });
+              console.error("Skipping aggregation filters: ", fields.slice(i, i + 10));
+              skippedList.push(fields.slice(i, i + 10).join(", "));
+              // set({ aggregations: {} });
+            }));
         }
+        Promise.all(requests).then(() => {
+          if (skippedList.length > 0 && get().showFailedAggregationAlerts) {
+            alert("Error fetching aggregation filters for filter list. The following fields were skipped: " + skippedList.join(", "));
+          }
+        });
       },
       fetchSingleFilterAggregation: async (field, searchTerm) => {
         let searchURL = get().getSearchURL();
@@ -663,19 +670,7 @@ const useStore = create<Store>(
           return;
         }
 
-        // "suggest": {
-        //   "completition": {
-        //     "prefix": "/Subtype",
-        //       "completion": {
-        //       "field": "q_parents_and_keys.completion",
-        //         "size": 2000,
-        //           "skip_duplicates": true
-        //     }
-        //   }
-        // }
-
         let completionFields = get().completionFields;
-
         let isCompletionField = completionFields && completionFields.includes(field);
 
         let query: Record<string, any> = {
@@ -756,9 +751,22 @@ const useStore = create<Store>(
             let allMappingFields = Object.entries(mapping).map(([field, _]) => field);
             allMappingFields.sort();
             let keywordFields = Object.entries(mapping) //all fields with type keyword (ES type)
-              .filter(([field, meta]: [field: string, meta: any]) => meta.type === "keyword")
+              .filter(([field, meta]: [field: string, meta: any]) => {
+                if (meta?.type === "keyword") {
+                  return true;
+                } else if (meta?.fields && typeof meta.fields === "object" && Object.keys(meta.fields).length > 0) {
+                  // Support nested keyword fields
+                  return Object.entries(meta.fields).some(([subField, subMeta]: [string, any]) => {
+                    return subMeta?.type === "keyword";
+                  });
+                } else {
+                  return false;
+                }
+              })
               .map(([field, _]) => field);
             keywordFields.sort();
+
+            console.log("keywordFields", keywordFields, mapping)
 
             if (Object.keys(get().aggregations).length === 0) {
               get().fetchFilterAggregations(keywordFields);
@@ -989,8 +997,7 @@ const useStore = create<Store>(
           rawFileLocation: "",
           downloadMode: "api",
           s3BucketName: "",
-          s3AccessKeyID: "",
-          s3SecretAccessKey: "",
+          awsProfileName: "",
           index: "",
           sigTermsField: "tk_creator_tool",
           suggestionField: "q_keys",
@@ -1018,6 +1025,8 @@ const useStore = create<Store>(
       setCreatorToolName: (creatorToolName) => set({ creatorToolName }),
       crashMetricName: "Frequency",
       setCrashMetricName: (crashMetricName) => set({ crashMetricName }),
+      showFailedAggregationAlerts: true,
+      setShowFailedAggregationAlerts: (showFailedAggregationAlerts) => set({ showFailedAggregationAlerts }),
     })
   )
 );

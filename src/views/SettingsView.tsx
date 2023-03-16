@@ -159,8 +159,7 @@ const SettingsView: FC = () => {
   ]);
 
   const [s3BucketName, setS3BucketName] = useStore((state) => [state.s3BucketName, state.setS3BucketName]);
-  const [s3AccessKeyID, setS3AccessKeyID] = useStore((state) => [state.s3AccessKeyID, state.setS3AccessKeyID]);
-  const [s3SecretAccessKey, setS3SecretAccessKey] = useStore((state) => [state.s3SecretAccessKey, state.setS3SecretAccessKey]);
+  const [awsProfileName, setAWSProfileName] = useStore((state) => [state.awsProfileName, state.setAWSProfileName]);
 
   const [elasticSearchIndex, setElasticSearchIndex] = useStore((state) => [state.index, state.setIndex]);
   const [kibanaURL, setKibanaURL] = useStore((state) => [state.kibanaURL, state.setKibanaURL]);
@@ -179,6 +178,7 @@ const SettingsView: FC = () => {
     state.setNonVisibleFields,
   ]);
 
+  const [showFailedAggregationAlerts, setShowFailedAggregationAlerts] = useStore((state) => [state.showFailedAggregationAlerts, state.setShowFailedAggregationAlerts]);
   const [hiddenVizFields, setHiddenVizFields] = useStore((state) => [state.hiddenVizFields, state.setHiddenVizFields]);
   const [nonFilterableFields, setNonFilterableFields] = useStore((state) => [
     state.nonFilterableFields,
@@ -503,25 +503,14 @@ const SettingsView: FC = () => {
               />
               <TextField
                 style={{ marginTop: "15px" }}
-                label="Access Key ID"
-                placeholder="Access Key ID (Blank for public bucket)"
+                label="AWS Profile Name"
+                placeholder="AWS Profile Name (Blank for public bucket)"
                 variant="outlined"
-                value={s3AccessKeyID}
+                value={awsProfileName}
                 onChange={(evt) => {
-                  setS3AccessKeyID(evt.target.value);
+                  setAWSProfileName(evt.target.value);
                 }}
               />
-              <TextField
-                style={{ marginTop: "15px" }}
-                label="Secret Access Key"
-                placeholder="Secret Access Key (Blank for public bucket)"
-                variant="outlined"
-                value={s3SecretAccessKey}
-                onChange={(evt) => {
-                  setS3SecretAccessKey(evt.target.value);
-                }}
-              />
-
             </FormControl>}
 
           <Autocomplete
@@ -619,6 +608,14 @@ const SettingsView: FC = () => {
             Mapping Field Settings
           </h5>
           <Divider style={{ width: "100%", marginBottom: "30px" }} />
+          <FormGroup style={{ display: "flex", alignItems: "center" }}>
+            <FormControlLabel
+              labelPlacement="start"
+              control={<Switch checked={showFailedAggregationAlerts} onClick={() => setShowFailedAggregationAlerts(!showFailedAggregationAlerts)} />}
+              label="Show failed aggregation alerts"
+              style={{ flexDirection: "row" }}
+            />
+          </FormGroup>
           <Autocomplete
             multiple
             disableCloseOnSelect

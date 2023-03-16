@@ -55,8 +55,7 @@ const DownloadButton: FC<Props> = () => {
   const downloadMode = useStore((state) => state.downloadMode);
 
   const s3BucketName = useStore((state) => state.s3BucketName);
-  const s3AccessKeyID = useStore((state) => state.s3AccessKeyID);
-  const s3SecretAccessKey = useStore((state) => state.s3SecretAccessKey);
+  const awsProfileName = useStore((state) => state.awsProfileName);
 
   const [downloadMessage, setDownloadMessage] = useState("");
 
@@ -112,8 +111,7 @@ const DownloadButton: FC<Props> = () => {
                 useRawFileLocation: downloadMode === "local",
                 useS3: downloadMode === "s3",
                 s3BucketName,
-                s3AccessKeyID,
-                s3SecretAccessKey,
+                awsProfileName,
                 urls,
               });
               setSelectedDocuments([]);
@@ -134,8 +132,7 @@ const DownloadButton: FC<Props> = () => {
                       useRawFileLocation: downloadMode === "local",
                       useS3: downloadMode === "s3",
                       s3BucketName,
-                      s3AccessKeyID,
-                      s3SecretAccessKey,
+                      awsProfileName,
                       urls,
                     });
                   });

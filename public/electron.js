@@ -182,10 +182,11 @@ app.whenReady().then(() => {
 
       if (info.useS3) {
         const s3 = new AWS.S3();
-        AWS.config.update({
-          accessKeyId: info.s3AccessKeyID,
-          secretAccessKey: info.s3SecretAccessKey,
+
+        let credentials = new AWS.SharedIniFileCredentials({
+          profile: info.awsProfileName,
         });
+        AWS.config.update({ credentials });
 
         await s3
           .getObject({
@@ -386,10 +387,11 @@ app.whenReady().then(() => {
             info.urls.map((url) => {
               if (info.useS3) {
                 const s3 = new AWS.S3();
-                AWS.config.update({
-                  accessKeyId: info.s3AccessKeyID,
-                  secretAccessKey: info.s3SecretAccessKey,
+
+                let credentials = new AWS.SharedIniFileCredentials({
+                  profile: info.awsProfileName,
                 });
+                AWS.config.update({ credentials });
 
                 s3.getObject({
                   Bucket: info.s3Bucket,
