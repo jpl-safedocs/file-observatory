@@ -37,19 +37,22 @@ import ListItemText from "@mui/material/ListItemText";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import Checkbox from "@mui/material/Checkbox";
 import Collapse from "@mui/material/Collapse";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
+import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-import { TextField, Tooltip } from "@mui/material";
+import { IconButton, TextField, Tooltip } from "@mui/material";
 
 import { FixedSizeList } from "react-window";
 
 import { useDebounce } from "usehooks-ts";
 
-import useStore from "../utils/store";
+import useStore, { Filter } from "../utils/store";
 
 import "../scss/FilterSelection.scss";
 
@@ -57,13 +60,19 @@ interface FilterCategoryItemProps {
   label: string;
   itemName: string;
   categoryFilters: any[];
+  activeFilters: Filter[];
+  setActiveFilters: (activeFilters: Filter[]) => void;
   style?: any;
 }
 
-const FilterCategoryItem: FC<FilterCategoryItemProps> = ({ label, itemName, categoryFilters, style }) => {
-  const activeFilters = useStore((state) => state.activeFilters);
-  const setActiveFilters = useStore((state) => state.setActiveFilters);
-
+const FilterCategoryItem: FC<FilterCategoryItemProps> = ({
+  label,
+  itemName,
+  categoryFilters,
+  activeFilters,
+  setActiveFilters,
+  style
+}) => {
   return (
     <ListItem style={style}>
       <ListItemButton
@@ -100,13 +109,23 @@ const FilterCategory: FC<FilterCategoryProps> = ({ label, data, style }) => {
   const [open, setOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const activeFilters = useStore((state) => state.activeFilters);
+  const setActiveFilters = useStore((state) => state.setActiveFilters);
+
+  const [unsavedActiveFilters, setUnsavedActiveFilters] = useState<Filter[]>([]);
+  const [unsavedChanges, setUnsavedChanges] = useState(false);
+
+  useEffect(() => {
+    setUnsavedActiveFilters(activeFilters);
+    setUnsavedChanges(false);
+  }, [activeFilters]);
+
   const fetchSingleFilterAggregation = useStore((state) => state.fetchSingleFilterAggregation);
 
   const [filteredAggregationData, setFilteredAggregationData] = useState<string[]>([]);
 
-  const categoryFilters = activeFilters
-    .filter((activeFilter) => activeFilter.name === label)
-    .map((activeFilter) => activeFilter.value);
+  const categoryFilters = useMemo(() => {
+    return unsavedActiveFilters.filter((activeFilter) => activeFilter.name === label).map((activeFilter) => activeFilter.value);
+  }, [unsavedActiveFilters, label]);
 
   const debouncedSearchText = useDebounce(searchText, 500);
 
@@ -140,7 +159,13 @@ const FilterCategory: FC<FilterCategoryProps> = ({ label, data, style }) => {
 
   return (
     <>
-      <ListItemButton onClick={() => setOpen(!open)}>
+      <ListItemButton onClick={() => {
+        if (open && unsavedChanges) {
+          setActiveFilters(unsavedActiveFilters);
+        }
+
+        setOpen(!open);
+      }}>
         <ListItemText
           style={{ color: data.length === 0 ? "#737373" : "black" }}
           primary={`${label} (${countText})`}
@@ -148,13 +173,30 @@ const FilterCategory: FC<FilterCategoryProps> = ({ label, data, style }) => {
         {open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
-        <TextField
-          label={`Search ${label}`}
-          variant="outlined"
-          onChange={(evt) => {
-            setSearchText(evt.target.value);
-          }}
-        />
+        <div style={{ display: "flex" }}>
+          <TextField
+            style={{ width: "calc(100% - 50px)" }}
+            label={`Search ${label}`}
+            variant="outlined"
+            onChange={(evt) => {
+              setSearchText(evt.target.value);
+            }}
+          />
+          <div style={{ width: "50px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Tooltip title={unsavedChanges ? "Apply Filter" : categoryFilters.length > 0 ? "Clear Filter" : "Add items to filter"}>
+              <IconButton onClick={() => {
+                if (unsavedChanges) {
+                  setActiveFilters(unsavedActiveFilters);
+                } else if (categoryFilters.length > 0) {
+                  // Clear all filters for this category
+                  setActiveFilters(activeFilters.filter((activeFilter) => activeFilter.name !== label));
+                }
+              }}>
+                {unsavedChanges ? <FilterAltIcon /> : categoryFilters.length > 0 ? <FilterAltOffIcon /> : <FilterAltOutlinedIcon />}
+              </IconButton>
+            </Tooltip>
+          </div>
+        </div>
         <FixedSizeList height={400} width={"22vw"} itemSize={46} itemCount={filteredData.length} overscanCount={5}>
           {({ index, style }) => (
             <FilterCategoryItem
@@ -162,6 +204,11 @@ const FilterCategory: FC<FilterCategoryProps> = ({ label, data, style }) => {
               itemName={filteredData[index]}
               categoryFilters={categoryFilters}
               style={style}
+              activeFilters={unsavedActiveFilters}
+              setActiveFilters={(filters) => {
+                setUnsavedActiveFilters(filters);
+                setUnsavedChanges(true);
+              }}
             />
           )}
         </FixedSizeList>
