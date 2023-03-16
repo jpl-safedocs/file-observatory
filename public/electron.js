@@ -181,20 +181,28 @@ app.whenReady().then(() => {
       let downloadedFilePath = "";
 
       if (info.useS3) {
-        const s3 = new AWS.S3();
-
         let credentials = new AWS.SharedIniFileCredentials({
           profile: info.awsProfileName,
         });
         AWS.config.update({ credentials });
 
-        await s3
-          .getObject({
-            Bucket: info.s3Bucket,
-            Key: info.url,
-          })
-          .promise()
-          .then(async (data) => {
+        let s3 = new AWS.S3();
+
+        let url = info.url.startsWith(info.s3BucketName + "/")
+          ? info.url.replace(info.s3BucketName + "/", "")
+          : info.url;
+
+        await s3.getObject(
+          {
+            Bucket: info.s3BucketName,
+            Key: url,
+          },
+          async (err, data) => {
+            if (err) {
+              console.error(err);
+              return;
+            }
+
             downloadedFilePath = path.join(
               tempDir,
               normalizedPath.split(path.sep)[
@@ -202,11 +210,9 @@ app.whenReady().then(() => {
               ]
             );
 
-            await fs.writeFile(downloadedFilePath, data);
-          })
-          .catch((err) => {
-            console.error(err);
-          });
+            await fs.writeFileSync(downloadedFilePath, data.Body);
+          }
+        );
       } else if (!info.useRawFileLocation) {
         download(BrowserWindow.getFocusedWindow(), info.url, {
           directory: tempDir,
@@ -386,33 +392,38 @@ app.whenReady().then(() => {
           if (info.urls) {
             info.urls.map((url) => {
               if (info.useS3) {
-                const s3 = new AWS.S3();
-
                 let credentials = new AWS.SharedIniFileCredentials({
                   profile: info.awsProfileName,
                 });
                 AWS.config.update({ credentials });
 
-                s3.getObject({
-                  Bucket: info.s3Bucket,
-                  Key: url,
-                })
-                  .promise()
-                  .then((data) => {
+                let s3 = new AWS.S3();
+                if (url.startsWith(info.s3BucketName + "/")) {
+                  url = url.replace(info.s3BucketName + "/", "");
+                }
+                s3.getObject(
+                  {
+                    Bucket: info.s3BucketName,
+                    Key: url,
+                  },
+                  (err, data) => {
+                    if (err) {
+                      console.error(err);
+                      return;
+                    }
+
                     let destinationPath = path.join(
                       response.filePaths[0],
                       url.split("/")[url.split("/").length - 1]
                     );
 
-                    fs.writeFile(destinationPath, data);
+                    fs.writeFileSync(destinationPath, data.Body);
                     window.webContents.send(
                       "download complete",
                       destinationPath
                     );
-                  })
-                  .catch((err) => {
-                    console.error(err);
-                  });
+                  }
+                );
               } else if (!info.useRawFileLocation) {
                 download(BrowserWindow.getFocusedWindow(), url, {
                   directory: response.filePaths[0],
