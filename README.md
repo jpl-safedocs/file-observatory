@@ -1,5 +1,7 @@
 # DARPA Safedocs File Observatory
 
+![Example of the Safedocs File Observatory App](docs/media/observatory_app.png)
+
 The Safedocs File Observatory application is a tool meant to allow for the fast filtering and visualization of large document datasets based on low-level metadata that has been parsed and stored. Through this tool, a user has access to a variety of dynamic visualization tools to gain insight into specific fields by basic value counts as well as the ability to trigger more complex, multi-level, Elasticsearch queries.
 
 # Features

@@ -529,9 +529,11 @@ const useStore = create<Store>(
                 ).then((values) => {
                   let completion_counts = values
                     .map((response, i) => {
+                      let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
+
                       return {
                         completion: completions.options[i].text,
-                        count: response.data.documents.hits.total.value,
+                        count: responseDocuments.hits.total.value,
                       };
                     })
                     .sort((a, b) =>
