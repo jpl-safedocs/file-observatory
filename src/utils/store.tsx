@@ -295,6 +295,7 @@ const useStore = create<Store>(
           suggestions: {},
           completions: [],
           geoLocations: [],
+          sigTerms: {}
         }));
         if (!index || !get().getSearchURL()) {
           set({ validIndex: false, loadingIndex: false });
@@ -370,6 +371,7 @@ const useStore = create<Store>(
           completions: [],
           aggregations: {},
           geoLocations: [],
+          sigTerms: {}
         }),
       suggestionField: "q_keys",
       setSuggestionField: (suggestionField) => {
