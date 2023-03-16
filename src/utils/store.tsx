@@ -459,10 +459,10 @@ const useStore = create<Store>(
                 let options = [suggestions.text, ...suggestions.options.map((option: any) => option.text)];
 
                 let countQuery: Record<string, any> = {
-                  query: infiniteQuery.query,
+                  query: { match_all: {} },
                   aggs: {},
                   track_total_hits: true,
-                  size: 0,
+                  size: 1000,
                 };
 
                 options.forEach((option) => {

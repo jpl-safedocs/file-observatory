@@ -58,18 +58,8 @@ header {
 
   div.MuiOutlinedInput-root {
     background: white;
-    width: 15ch;
+    width: 40ch;
     transition: all 0.5s ease;
-
-    &.Mui-focused {
-      width: 40ch;
-    }
-  }
-
-  div.Mui-focused {
-    div.MuiOutlinedInput-root {
-      width: 40ch;
-    }
   }
 
   input {
