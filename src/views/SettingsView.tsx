@@ -57,9 +57,10 @@ import ErrorIcon from "@mui/icons-material/Error";
 
 import Reorder, { reorder } from "react-reorder";
 
-import useStore from "../utils/store";
+import useStore, { DownloadMode } from "../utils/store";
 
 import "../scss/SettingsView.scss";
+import { FormLabel, Radio, RadioGroup } from "@mui/material";
 
 // @ts-ignore
 const { ipcRenderer } = window.require("electron");
@@ -152,10 +153,15 @@ const SettingsView: FC = () => {
   const [useEsAPI, setUseEsAPI] = useStore((state) => [state.useEsAPI, state.setUseEsAPI]);
   const [downloadAPI, setDownloadAPI] = useStore((state) => [state.downloadAPI, state.setDownloadAPI]);
   const [rawFileLocation, setRawFileLocation] = useStore((state) => [state.rawFileLocation, state.setRawFileLocation]);
-  const [useRawFileLocation, setUseRawFileLocation] = useStore((state) => [
-    state.useRawFileLocation,
-    state.setUseRawFileLocation,
+  const [downloadMode, setDownloadMode] = useStore((state) => [
+    state.downloadMode,
+    state.setDownloadMode,
   ]);
+
+  const [s3BucketName, setS3BucketName] = useStore((state) => [state.s3BucketName, state.setS3BucketName]);
+  const [s3AccessKeyID, setS3AccessKeyID] = useStore((state) => [state.s3AccessKeyID, state.setS3AccessKeyID]);
+  const [s3SecretAccessKey, setS3SecretAccessKey] = useStore((state) => [state.s3SecretAccessKey, state.setS3SecretAccessKey]);
+
   const [elasticSearchIndex, setElasticSearchIndex] = useStore((state) => [state.index, state.setIndex]);
   const [kibanaURL, setKibanaURL] = useStore((state) => [state.kibanaURL, state.setKibanaURL]);
   const [sigTermsField, setSigTermsField] = useStore((state) => [state.sigTermsField, state.setSigTermsField]);
@@ -431,17 +437,21 @@ const SettingsView: FC = () => {
         <div>
           <h5 style={{ margin: 0, paddingTop: "4em", fontSize: "1.25em", color: "#525252" }}>Download Settings</h5>
           <Divider style={{ width: "100%", marginBottom: "30px" }} />
-          <FormGroup>
-            <FormControlLabel
-              labelPlacement="start"
-              control={
-                <Switch checked={!useRawFileLocation} onClick={() => setUseRawFileLocation(!useRawFileLocation)} />
-              }
-              label="Use Download API?"
-              style={{ flexDirection: "row", paddingBottom: "30px" }}
-            />
-          </FormGroup>
-          {!useRawFileLocation ? (
+          <FormControl>
+            <FormLabel id="download-mode-group-label">Download Mode</FormLabel>
+            <RadioGroup
+              row
+              aria-labelledby="download-mode-group-label"
+              name="download-mode-buttons-group"
+              value={downloadMode}
+              onChange={(evt) => setDownloadMode(evt.target.value as DownloadMode)}
+            >
+              <FormControlLabel value="api" control={<Radio />} label="API" />
+              <FormControlLabel value="local" control={<Radio />} label="File System" />
+              <FormControlLabel value="s3" control={<Radio />} label="S3" />
+            </RadioGroup>
+          </FormControl>
+          {downloadMode === "api" &&
             <FormControl style={{ width: "100%", marginBottom: "30px" }}>
               <TextField
                 label="Download API"
@@ -455,8 +465,9 @@ const SettingsView: FC = () => {
               <FormHelperText>
                 Requested files will be appended to the API with "?paths=file1&amp;file2&amp;...".
               </FormHelperText>
-            </FormControl>
-          ) : (
+            </FormControl>}
+
+          {downloadMode === "local" &&
             <FormControl style={{ display: "flex", flexDirection: "row", width: "100%", marginBottom: "30px" }}>
               <Button
                 variant="contained"
@@ -476,8 +487,43 @@ const SettingsView: FC = () => {
                   setRawFileLocation(evt.target.value);
                 }}
               />
-            </FormControl>
-          )}
+            </FormControl>}
+
+          {downloadMode === "s3" &&
+            <FormControl style={{ width: "100%", marginBottom: "30px" }}>
+              <TextField
+                style={{ marginTop: "15px" }}
+                label="S3 Bucket Name"
+                placeholder="Bucket Name"
+                variant="outlined"
+                value={s3BucketName}
+                onChange={(evt) => {
+                  setS3BucketName(evt.target.value);
+                }}
+              />
+              <TextField
+                style={{ marginTop: "15px" }}
+                label="Access Key ID"
+                placeholder="Access Key ID (Blank for public bucket)"
+                variant="outlined"
+                value={s3AccessKeyID}
+                onChange={(evt) => {
+                  setS3AccessKeyID(evt.target.value);
+                }}
+              />
+              <TextField
+                style={{ marginTop: "15px" }}
+                label="Secret Access Key"
+                placeholder="Secret Access Key (Blank for public bucket)"
+                variant="outlined"
+                value={s3SecretAccessKey}
+                onChange={(evt) => {
+                  setS3SecretAccessKey(evt.target.value);
+                }}
+              />
+
+            </FormControl>}
+
           <Autocomplete
             value={allMappingFields.length ? downloadPathField : ""}
             options={allMappingFields}

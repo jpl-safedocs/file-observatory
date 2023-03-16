@@ -62,6 +62,8 @@ export type Filter = {
   value: string;
 };
 
+export type DownloadMode = "api" | "local" | "s3";
+
 export type Store = {
   esURL: string;
   setEsURL: (esURL: string) => void;
@@ -78,8 +80,14 @@ export type Store = {
   setDownloadAPI: (API: string) => void;
   rawFileLocation: string;
   setRawFileLocation: (location: string) => void;
-  useRawFileLocation: boolean;
-  setUseRawFileLocation: (useRawFileLocation: boolean) => void;
+  downloadMode: DownloadMode;
+  setDownloadMode: (downloadMode: DownloadMode) => void;
+  s3BucketName: string;
+  setS3BucketName: (s3BucketName: string) => void;
+  s3AccessKeyID: string;
+  setS3AccessKeyID: (s3AccessKeyID: string) => void;
+  s3SecretAccessKey: string;
+  setS3SecretAccessKey: (s3SecretAccessKey: string) => void;
   index: string;
   validIndex: boolean;
   loadingIndex: boolean;
@@ -190,7 +198,10 @@ export const persistentProps: NonFunctionPropertyNames<Store>[] = [
   "downloadAPI",
   "downloadPathField",
   "rawFileLocation",
-  "useRawFileLocation",
+  "downloadMode",
+  "s3BucketName",
+  "s3AccessKeyID",
+  "s3SecretAccessKey",
   "index",
   "activeField",
   "activeYField",
@@ -275,8 +286,14 @@ const useStore = create<Store>(
       setDownloadAPI: (downloadAPI) => set(() => ({ downloadAPI })),
       rawFileLocation: "",
       setRawFileLocation: (rawFileLocation) => set(() => ({ rawFileLocation })),
-      useRawFileLocation: false,
-      setUseRawFileLocation: (useRawFileLocation) => set(() => ({ useRawFileLocation })),
+      downloadMode: "api",
+      setDownloadMode: (downloadMode) => set(() => ({ downloadMode })),
+      s3BucketName: "",
+      setS3BucketName: (s3BucketName) => set(() => ({ s3BucketName })),
+      s3AccessKeyID: "",
+      setS3AccessKeyID: (s3AccessKeyID) => set(() => ({ s3AccessKeyID })),
+      s3SecretAccessKey: "",
+      setS3SecretAccessKey: (s3SecretAccessKey) => set(() => ({ s3SecretAccessKey })),
       index: "",
       validIndex: false,
       loadingIndex: false,
@@ -295,6 +312,7 @@ const useStore = create<Store>(
           suggestions: {},
           completions: [],
           geoLocations: [],
+          sigTerms: {}
         }));
         if (!index || !get().getSearchURL()) {
           set({ validIndex: false, loadingIndex: false });
@@ -370,6 +388,7 @@ const useStore = create<Store>(
           completions: [],
           aggregations: {},
           geoLocations: [],
+          sigTerms: {}
         }),
       suggestionField: "q_keys",
       setSuggestionField: (suggestionField) => {
@@ -459,10 +478,10 @@ const useStore = create<Store>(
                 let options = [suggestions.text, ...suggestions.options.map((option: any) => option.text)];
 
                 let countQuery: Record<string, any> = {
-                  query: infiniteQuery.query,
+                  query: { match_all: {} },
                   aggs: {},
                   track_total_hits: true,
-                  size: 0,
+                  size: 1000,
                 };
 
                 options.forEach((option) => {
@@ -842,7 +861,7 @@ const useStore = create<Store>(
           });
       },
       getDocumentsDownloadPaths: (docIDs) => {
-        if (!get().useRawFileLocation) {
+        if (get().downloadMode === "local") {
           return [
             encodeURI(
               `${get().downloadAPI}?${docIDs
@@ -850,6 +869,8 @@ const useStore = create<Store>(
                 .join("&")}`
             ),
           ];
+        } else if (get().downloadMode === "s3") {
+          return docIDs.map((docID) => get().documents[docID]._source[get().downloadPathField]);
         } else {
           return docIDs.map((docID) =>
             path.join(
@@ -877,7 +898,7 @@ const useStore = create<Store>(
         return timedAxios.post(searchURL, query).then((response) => {
           let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
           let documents = responseDocuments.hits.hits;
-          if (!get().useRawFileLocation) {
+          if (get().downloadMode === "local") {
             return [
               encodeURI(
                 `${get().downloadAPI}?${documents
@@ -885,6 +906,8 @@ const useStore = create<Store>(
                   .join("&")}`
               ),
             ];
+          } else if (get().downloadMode === "s3") {
+            return documents.map((document: any) => document._source[get().downloadPathField]);
           } else {
             return documents.map((document: any) => {
               return path.join(
@@ -962,7 +985,10 @@ const useStore = create<Store>(
           downloadAPI: "https://api.safedocs.xyz/v1/files",
           downloadPathField: "",
           rawFileLocation: "",
-          useRawFileLocation: false,
+          downloadMode: "api",
+          s3BucketName: "",
+          s3AccessKeyID: "",
+          s3SecretAccessKey: "",
           index: "",
           sigTermsField: "tk_creator_tool",
           suggestionField: "q_keys",

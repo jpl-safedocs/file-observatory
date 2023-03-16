@@ -49,7 +49,12 @@ const path = window.require("path");
 
 const HexEditor: FC = () => {
   const rawFileLocation = useStore((state) => state.rawFileLocation);
-  const useRawFileLocation = useStore((state) => state.useRawFileLocation);
+  const downloadMode = useStore((state) => state.downloadMode);
+
+  const s3BucketName = useStore((state) => state.s3BucketName);
+  const s3AccessKeyID = useStore((state) => state.s3AccessKeyID);
+  const s3SecretAccessKey = useStore((state) => state.s3SecretAccessKey);
+
   const selectedIndices = useStore((state) => state.selectedDocuments);
   const getDocumentsDownloadPaths = useStore((state) => state.getDocumentsDownloadPaths);
 
@@ -124,6 +129,7 @@ const HexEditor: FC = () => {
         flexDirection: "column",
       }}
     >
+      <h4 style={{ marginBottom: 0 }}><i>Trail of Bits Polyfile</i> Hex Editor</h4>
       <h5 style={{ marginBottom: 0 }}>Select a document from the table to generate and view</h5>
       <span style={{ fontSize: "12px", marginBottom: "15px" }}>
         This may take a couple minutes depending on the size of the document.
@@ -158,7 +164,11 @@ const HexEditor: FC = () => {
                   url: hexEditorFile,
                   path: hexEditorFile,
                   outputFile: path.join(hexEditorFileDirectory, `${hexEditorFile.split("/").pop()}.html`),
-                  useRawFileLocation: useRawFileLocation || !hexEditorFile.startsWith("http"),
+                  useRawFileLocation: downloadMode === "local" && !hexEditorFile.startsWith("http"),
+                  useS3: downloadMode === "s3",
+                  s3BucketName,
+                  s3AccessKeyID,
+                  s3SecretAccessKey,
                 });
                 setHexEditorLoading(true);
               }
@@ -243,7 +253,7 @@ const HexEditor: FC = () => {
         />
       </FormControl>
       <FormControl style={{ width: "488px", marginTop: "15px" }}>
-        <InputLabel id="existing-file-select-label">Open Generated Hex Editor File</InputLabel>
+        <InputLabel id="existing-file-select-label">Open Polyfile Generated Hex Editor File</InputLabel>
         <Select
           value=""
           id="existing-file-select"

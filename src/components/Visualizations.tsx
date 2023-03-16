@@ -332,10 +332,30 @@ const Visualizations: FC = () => {
 
   const formattedSuggestions = useMemo(() => {
     if (!suggestions || !Object.keys(suggestions).length) return [];
-    return Object.entries(suggestions.documents.aggregations).map(([term, meta]: [term: string, meta: any]) => ({
+    let data = Object.entries(suggestions.documents.aggregations).map(([term, meta]: [term: string, meta: any]) => ({
       label: term,
       count: meta.doc_count,
     }));
+
+    data.sort((a, b) => {
+      if (a.count === b.count) {
+        // If text is the same and ends with an number, sort by number
+        // Ex. Font8 < Font10
+        let aLabel = a.label.match(/(?<label>[^0-9]*)(?<number>\d+$)/);
+        let bLabel = b.label.match(/(?<label>[^0-9]*)(?<number>\d+$)/);
+        if (aLabel && bLabel && aLabel.groups?.label === bLabel.groups?.label) {
+          const aNum = parseInt(aLabel.groups?.number || "0");
+          const bNum = parseInt(bLabel.groups?.number || "0");
+
+          return bNum - aNum;
+        }
+
+        return a.label < b.label ? -1 : 1;
+      }
+      return b.count - a.count;
+    });
+
+    return data;
   }, [suggestions]);
 
   const formattedCompletions = useMemo(() => {
