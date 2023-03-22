@@ -213,4 +213,4 @@ This will prompt you to enter the new version number, which will automatically b
 # Contributors
 - [Ryan Stonebraker](https://github.com/RyanStonebraker), NASA JPL
 - [Mike Milano](https://github.com/mmilano6), NASA JPL
-
+- [Anastasija Mensikova](https://github.com/amensiko), NASA JPL
