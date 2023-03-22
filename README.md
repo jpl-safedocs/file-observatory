@@ -1,4 +1,5 @@
 # DARPA Safedocs File Observatory
+[![DOI](https://zenodo.org/badge/613576432.svg)](https://zenodo.org/badge/latestdoi/613576432)
 
 ![Example of the Safedocs File Observatory App](docs/media/observatory_app.png)
 
@@ -209,6 +210,7 @@ $ yarn build
 ```
 This will prompt you to enter the new version number, which will automatically be added as a git tag, and then will proceed to generate a local build.
 
-# Contributors 
-- Mike Milano, NASA JPL
-
+# Contributors
+- [Ryan Stonebraker](https://github.com/RyanStonebraker), NASA JPL
+- [Mike Milano](https://github.com/mmilano6), NASA JPL
+- [Anastasija Mensikova](https://github.com/amensiko), NASA JPL
