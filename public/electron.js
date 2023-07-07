@@ -97,6 +97,17 @@ electronDl();
 app.whenReady().then(() => {
   createWindow();
   setupLocalFilesNormalizerProxy();
+  app.commandLine.appendSwitch("ignore-certificate-errors");
+  app.commandLine.appendSwitch("allow-insecure-localhost", "true");
+
+  app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+  
+    // Prevent having error
+    event.preventDefault()
+    // and continue
+    callback(true)
+
+})
 
   app.on("activate", function () {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -374,6 +385,25 @@ app.whenReady().then(() => {
         if (!response.canceled) {
           const config = JSON.parse(fs.readFileSync(response.filePaths[0]));
           window.webContents.send("load-config-success", config);
+        }
+      });
+  });
+
+  ipcMain.on("open-raw-file", (event, info) => {
+    dialog
+      .showOpenDialog({
+        properties: ["openFile"],
+        buttonLabel: "Load",
+      })
+      .then((response) => {
+        if (!response.canceled) {
+          let path = response.filePaths[0];
+          const contents = fs.readFileSync(path).toString("utf8");
+          window.webContents.send("load-contents-success", {
+            path,
+            trigger: info.trigger,
+            contents,
+          });
         }
       });
   });

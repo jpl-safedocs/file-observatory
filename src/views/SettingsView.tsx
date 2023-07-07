@@ -148,6 +148,16 @@ const SearchSelect: FC<SearchSelectProps> = ({
 };
 
 const SettingsView: FC = () => {
+  const [elasticSearchUsername, setElasticSearchUsername] = useStore((state) => [
+    state.esUsername,
+    state.setEsUsername,
+  ]);
+
+  const [elasticSearchPassword, setElasticSearchPassword] = useStore((state) => [
+    state.esPassword,
+    state.setEsPassword,
+  ]);
+
   const [elasticSearchURL, setElasticSearchURL] = useStore((state) => [state.esURL, state.setEsURL]);
   const [esAPI, setEsAPI] = useStore((state) => [state.esAPI, state.setEsAPI]);
   const [useEsAPI, setUseEsAPI] = useStore((state) => [state.useEsAPI, state.setUseEsAPI]);
@@ -280,7 +290,9 @@ const SettingsView: FC = () => {
         setHexEditorFileDirectory(info.path);
       }
     });
+
   }, [importConfig, setDownloadPath, setRawFileLocation, setHexEditorFileDirectory]);
+
 
   return (
     <div className="settings-container">
@@ -354,26 +366,47 @@ const SettingsView: FC = () => {
               <FormHelperText>Insert the ElasticSesarch index into the API with "{`{INDEX}`}".</FormHelperText>
             </FormControl>
           ) : (
-            <SearchSelect
-              className="setting-field"
-              label="ElasticSearch URL"
-              itemName="endpoint"
-              value={elasticSearchURL}
-              options={configEsURLs}
-              onDeleteOption={(option) => {
-                let configCopy = { ...fullConfig };
-                for (let i = 0; i < Object.keys(configCopy["mappings"]).length; i++) {
-                  let storedConfig = configCopy["mappings"][Object.keys(configCopy["mappings"])[i]];
-                  if (storedConfig["esURL"] === option) {
-                    delete configCopy["mappings"][Object.keys(configCopy["mappings"])[i]];
+            <div className="endpoint-config" style={{ display: "flex", alignItems: "center" }}>
+              <SearchSelect
+                style={{ flex: 2 }}
+                className="setting-field"
+                label="ElasticSearch URL"
+                itemName="endpoint"
+                value={elasticSearchURL}
+                options={configEsURLs}
+                onDeleteOption={(option) => {
+                  let configCopy = { ...fullConfig };
+                  for (let i = 0; i < Object.keys(configCopy["mappings"]).length; i++) {
+                    let storedConfig = configCopy["mappings"][Object.keys(configCopy["mappings"])[i]];
+                    if (storedConfig["esURL"] === option) {
+                      delete configCopy["mappings"][Object.keys(configCopy["mappings"])[i]];
+                    }
                   }
-                }
-                importConfig(configCopy);
-              }}
-              onChange={(index) => {
-                setElasticSearchURL(index);
-              }}
-            />
+                  importConfig(configCopy);
+                }}
+                onChange={(index) => {
+                  setElasticSearchURL(index);
+                }}
+              />
+              <TextField
+                style={{ flex: 1, marginLeft: "5px" }}
+                className="setting-field"
+                label="ElasticSearch Username"
+                value={elasticSearchUsername}
+                onChange={(e) => {
+                  setElasticSearchUsername(e.target.value);
+                }} />
+              <TextField
+                style={{ flex: 1, marginLeft: "5px" }}
+                className="setting-field"
+                label="ElasticSearch Password"
+                value={elasticSearchPassword}
+                onChange={(e) => {
+                  setElasticSearchPassword(e.target.value);
+                }}
+                type="password"
+              />
+            </div>
           )}
           <span style={{ marginBottom: "30px", marginTop: "30px", display: "flex", alignItems: "center" }}>
             <Tooltip title="Validate Index">

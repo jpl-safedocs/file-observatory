@@ -28,7 +28,8 @@
  */
 
 import create from "zustand";
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
+import https from "https";
 
 import { configurePersist } from "zustand-persist";
 
@@ -40,21 +41,6 @@ const path = window.require("path");
 const { persist } = configurePersist({
   storage: localStorage,
   rootKey: "safedocs",
-});
-
-const timedAxios = axios.create();
-
-timedAxios.interceptors.request.use((config) => {
-  // @ts-ignore
-  config.headers["request-start-time"] = performance.now();
-  return config;
-});
-
-timedAxios.interceptors.response.use((response) => {
-  // @ts-ignore
-  const duration = performance.now() - (response.config.headers["request-start-time"] as number);
-  response.headers["request-duration-seconds"] = `${Math.round(duration) / 1000}`;
-  return response;
 });
 
 export type Filter = {
@@ -69,6 +55,10 @@ export type Store = {
   setEsURL: (esURL: string) => void;
   kibanaURL: string;
   setKibanaURL: (kibanaURL: string) => void;
+  esUsername: string;
+  setEsUsername: (esUsername: string) => void;
+  esPassword: string;
+  setEsPassword: (esPassword: string) => void;
   esAPI: string;
   setEsAPI: (API: string) => void;
   useEsAPI: boolean;
@@ -90,6 +80,7 @@ export type Store = {
   validIndex: boolean;
   loadingIndex: boolean;
   loadingIndexMapping: boolean;
+  fetchAxios: (timed?: boolean) => typeof axios | AxiosInstance;
   setIndex: (index: string) => void;
   activePage: number;
   setActivePage: (page: number) => void;
@@ -194,6 +185,8 @@ export const persistentProps: NonFunctionPropertyNames<Store>[] = [
   "esURL",
   "kibanaURL",
   "esAPI",
+  "esUsername",
+  "esPassword",
   "useEsAPI",
   "downloadAPI",
   "downloadPathField",
@@ -232,21 +225,21 @@ export const persistentProps: NonFunctionPropertyNames<Store>[] = [
 export const persistentNonStoredProps: NonFunctionPropertyNames<Store>[] = [
   "recentHexEditorFiles",
   "activePage",
-  "activeViz",
+  "activeViz"
 ];
 
 const useStore = create<Store>(
   persist(
     {
       key: "safedocs",
-      allowlist: persistentProps,
     },
     (set, get): Store => ({
       esURL: "",
       setEsURL: (esURL: string) => {
         set(() => ({ esURL, loadingIndex: !!get().index }));
         if (!!get().index) {
-          axios
+          let axiosInstance = get().fetchAxios();
+          axiosInstance
             .get(`${get().esURL}/${get().index}/_mapping`)
             .then(() => {
               set({ validIndex: true, loadingIndex: false });
@@ -258,11 +251,20 @@ const useStore = create<Store>(
       },
       kibanaURL: "https://kibana.safedocs.xyz",
       setKibanaURL: (kibanaURL) => set({ kibanaURL }),
+      esUsername: "",
+      setEsUsername: (esUsername) => {
+        set({ esUsername });
+      },
+      esPassword: "",
+      setEsPassword: (esPassword) => {
+        set({ esPassword });
+      },
       esAPI: "https://api.safedocs.xyz/v1/elasticsearch/{INDEX}",
       setEsAPI: (esAPI) => {
         set(() => ({ esAPI, loadingIndex: !!get().index }));
         if (get().index) {
-          axios
+          let axiosInstance = get().fetchAxios();
+          axiosInstance
             .get(`${get().getSearchURL()}/mapping`)
             .then(() => {
               set({ validIndex: true, loadingIndex: false });
@@ -296,6 +298,37 @@ const useStore = create<Store>(
       validIndex: false,
       loadingIndex: false,
       loadingIndexMapping: false,
+      fetchAxios: (timed=false) => {
+        if (!get().esPassword || !get().esUsername) {
+          return axios;
+        }
+
+        let authAxios = axios.create({
+          httpsAgent: new https.Agent({
+            rejectUnauthorized: true
+          }),
+        });
+
+        if (timed) {
+          authAxios.interceptors.request.use((config) => {
+            // @ts-ignore
+            config.headers["request-start-time"] = performance.now();
+            return config;
+          });
+  
+          authAxios.interceptors.response.use((response) => {
+            // @ts-ignore
+            const duration = performance.now() - (response.config.headers["request-start-time"] as number);
+            response.headers["request-duration-seconds"] = `${Math.round(duration) / 1000}`;
+            return response;
+          });
+        }
+
+        const token = Buffer.from(`${get().esUsername}:${get().esPassword}`, "utf8").toString("base64")
+        authAxios.defaults.headers.common["Authorization"] = `Basic ${token}`;
+
+        return authAxios;
+      },
       setIndex: (index) => {
         set(() => ({
           index,
@@ -317,12 +350,13 @@ const useStore = create<Store>(
           return;
         }
         let url = get().useEsAPI ? `${get().getSearchURL()}/mapping` : `${get().esURL}/${get().index}/_mapping`;
-        axios
-          .get(url)
-          .then(() => {
+
+        let axiosInstance = get().fetchAxios();
+        axiosInstance.get(url)
+          .then((res) => {
             set({ validIndex: true, loadingIndex: false });
           })
-          .catch(() => {
+          .catch((err) => {
             set({ validIndex: false, loadingIndex: false });
           });
       },
@@ -460,7 +494,10 @@ const useStore = create<Store>(
             resolve();
           });
         }
-        return timedAxios
+
+        let axiosInstance = get().fetchAxios(true);
+
+        return axiosInstance
           .post(searchURL, infiniteQuery)
           .then((response) => {
             let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
@@ -488,7 +525,8 @@ const useStore = create<Store>(
                   countQuery.aggs[option] = suggestAgg;
                 });
 
-                axios
+                let axiosInstance = get().fetchAxios();
+                axiosInstance
                   .post(get().getSearchURL(), countQuery)
                   .then((countResponse) => {
                     let countResponseData = get().useEsAPI ? countResponse.data : { documents: countResponse.data };
@@ -522,7 +560,8 @@ const useStore = create<Store>(
                     term.term[get().completionField] = option.text;
                     optionQuery["query"]["bool"]["must"].push(term);
 
-                    return axios.post(get().getSearchURL(), optionQuery);
+                    let axiosInstance = get().fetchAxios();
+                    return axiosInstance.post(get().getSearchURL(), optionQuery);
                   })
                 ).then((values) => {
                   let completion_counts = values
@@ -573,7 +612,9 @@ const useStore = create<Store>(
           size: get().activeSampleSize
         };
 
-        axios
+
+        let axiosInstance = get().fetchAxios();
+        axiosInstance
           .post(get().getSearchURL(), query)
           .then((response) => {
             let responseData = get().useEsAPI ? response.data : { documents: response.data };
@@ -625,13 +666,15 @@ const useStore = create<Store>(
           return;
         }
 
-        axios.post(searchURL, query).then((response) => {
+        let axiosInstance = get().fetchAxios();
+        axiosInstance.post(searchURL, query).then((response) => {
           let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
           set({ sigTerms: responseDocuments.aggregations });
         });
       },
 
       fetchFilterAggregations: async (fields, queryOverride) => {
+        let axiosInstance = get().fetchAxios();
         let groupedFilters = getGroupedFilters(get().activeFilters);
 
         set({ aggregations: {} });
@@ -646,7 +689,7 @@ const useStore = create<Store>(
           let aggQuery = getAggQuery(groupedFilters, fields.slice(i, i + 10), get().searchTerm, queryOverride);
           aggQuery.size = 0;
 
-          requests.push(axios
+          requests.push(axiosInstance
             .post(searchURL, aggQuery)
             .then((response) => {
               let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
@@ -716,7 +759,8 @@ const useStore = create<Store>(
           };
         }
 
-        return axios
+        let axiosInstance = get().fetchAxios();
+        return axiosInstance
           .post(searchURL, query)
           .then((response) => {
             let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
@@ -743,8 +787,9 @@ const useStore = create<Store>(
           set({ loadingIndex: false, loadingIndexMapping: false });
           return;
         }
+        let axiosInstance = get().fetchAxios();
         let url = get().useEsAPI ? `${searchURL}/mapping` : `${get().esURL}/${get().index}/_mapping`;
-        axios
+        axiosInstance
           .get(url)
           .then((response) => {
             let mapping: any = get().useEsAPI ? response.data.mapping : response.data;
@@ -863,7 +908,8 @@ const useStore = create<Store>(
           return;
         }
 
-        timedAxios
+        let axiosInstance = get().fetchAxios(true);
+        axiosInstance
           .post(searchURL, query)
           .then((response) => {
             let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
@@ -909,7 +955,8 @@ const useStore = create<Store>(
           return [];
         }
 
-        return timedAxios.post(searchURL, query).then((response) => {
+        let axiosInstance = get().fetchAxios(true);
+        return axiosInstance.post(searchURL, query).then((response) => {
           let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
           let documents = responseDocuments.hits.hits;
           if (get().downloadMode === "local") {
