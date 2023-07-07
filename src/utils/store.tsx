@@ -507,8 +507,8 @@ const useStore = create<Store>(
               loadingDocuments: false,
               documentError: false,
             });
-            if (get().activeViz === "Data Viz" && responseDocuments.suggest) {
-              let suggestions = responseDocuments.suggest["similarity-suggestion"][0];
+            if (get().activeViz === "Data Viz" && responseDocuments?.suggest) {
+              let suggestions = responseDocuments?.suggest?.["similarity-suggestion"][0];
               if (suggestions && suggestions.options.length) {
                 let options = [suggestions.text, ...suggestions.options.map((option: any) => option.text)];
 
@@ -539,9 +539,9 @@ const useStore = create<Store>(
                 set({ suggestions: {} });
               }
 
-              let completions = responseDocuments.suggest["completion"][0];
+              let completions = responseDocuments?.suggest?.["completion"][0];
 
-              if (completions.options && completions.options.length) {
+              if (completions?.options && completions.options.length > 0) {
                 Promise.all(
                   completions.options.map((option: any) => {
                     let optionQuery: Record<string, any> = {
@@ -765,8 +765,8 @@ const useStore = create<Store>(
           .then((response) => {
             let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
 
-            if (isCompletionField && responseDocuments.suggest && responseDocuments.suggest.completition) {
-              return responseDocuments.suggest.completition[0].options.map((option: any) => option.text);
+            if (isCompletionField && responseDocuments?.suggest && responseDocuments?.suggest?.completition) {
+              return responseDocuments.suggest.completition?.[0].options.map((option: any) => option.text);
             } else {
               // @ts-ignore
               return responseDocuments.aggregations[field]["buckets"]
@@ -815,8 +815,6 @@ const useStore = create<Store>(
               .map(([field, _]) => field);
             keywordFields.sort();
 
-            console.log("keywordFields", keywordFields, mapping)
-
             if (Object.keys(get().aggregations).length === 0) {
               get().fetchFilterAggregations(keywordFields);
             }
@@ -836,7 +834,7 @@ const useStore = create<Store>(
             }
 
             let completionFields = Object.entries(mapping)
-              .filter(([field, meta]: [field: string, meta: any]) => meta.fields && meta.fields.completion)
+              .filter(([field, meta]: [field: string, meta: any]) => meta?.fields && meta.fields?.completion)
               .map(([field, _]) => field);
 
             set({
