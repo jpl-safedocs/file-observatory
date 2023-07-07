@@ -1,6 +1,6 @@
 {
   "name": "safedocs-app",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "private": true,
   "author": "NASA JPL",
   "description": "DARPA Safedocs file observatory",
