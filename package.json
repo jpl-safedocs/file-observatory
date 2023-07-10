@@ -1,8 +1,9 @@
 {
   "name": "safedocs-app",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "private": true,
   "author": "NASA JPL",
+  "license": "SEE LICENSE IN LICENSE.md",
   "description": "DARPA Safedocs file observatory",
   "homepage": "./",
   "main": "./public/electron.js",
@@ -53,6 +54,7 @@
     "aws-sdk": "^2.1336.0",
     "axios": "^0.24.0",
     "electron-dl": "^3.3.0",
+    "https": "^1.0.0",
     "maplibre-gl": "^2.1.0",
     "msw": "^0.36.8",
     "react": "^17.0.2",

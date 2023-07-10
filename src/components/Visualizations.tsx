@@ -281,7 +281,6 @@ const Visualizations: FC = () => {
   const crashField = useStore((state) => state.crashField);
   const creatorTool = useStore((state) => state.creatorTool);
   const creatorToolName = useStore((state) => state.creatorToolName);
-  // const fetchDocuments = useStore((state) => state.fetchDocuments);
 
   const [activeIndices, setActiveIndices] = useState<ActiveIndexProps[]>(
     [0, 2, 4].map((i) => ({ index: i, permanent: true }))
