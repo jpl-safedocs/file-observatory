@@ -50,9 +50,10 @@ export const getSearchQuery = (
     },
   };
 
-  if (isDataViz && text && text.length) {
-    query["suggest"] = {
-      "similarity-suggestion": {
+  if (isDataViz && text && text.length && (suggestField || completionField)) {
+    query["suggest"] = {};
+    if (suggestField) {
+      query["suggest"]["similarity-suggestion"] = {
         text: text,
         term: {
           field: suggestField,
@@ -63,16 +64,20 @@ export const getSearchQuery = (
           min_word_length: 2,
           max_term_freq: 2000000,
         },
-      },
-      completion: {
+      };
+    }
+
+    if (completionField) {
+      query["suggest"]["completion"] = {
         prefix: text,
         completion: {
           field: `${completionField}.completion`,
           size: 2000,
           skip_duplicates: true,
         },
-      },
-    };
+      };
+    }
+
   } else if (filterTerms && Object.keys(filterTerms).length) {
     query.query = {
       bool: {
@@ -84,29 +89,36 @@ export const getSearchQuery = (
   }
 
   if (filterTerms && Object.keys(filterTerms).length) {
-    query.query.bool["filter"] = [];
-    Object.entries(filterTerms).forEach(([field, fieldValue]) => {
-      if (Array.isArray(fieldValue) && fieldValue.length === 1) {
-        fieldValue = fieldValue[0];
-      }
-
-      if (!Array.isArray(fieldValue)) {
-        let term: Record<string, any> = { match: {} };
-        term.match[field] = fieldValue;
-        query.query.bool["filter"].push(term);
-      } else {
-        let filter: Record<string, any> = { bool: { should: [] } };
-        fieldValue.forEach((val: string) => {
-          let term: Record<string, any> = { match: {} };
-          term.match[field] = val;
-          filter.bool.should.push(term);
-        });
-        query.query.bool["filter"].push(filter);
-      }
-    });
+    query.query.bool["filter"] = getFilterQuery(filterTerms);
   }
 
   return query;
+};
+
+export const getFilterQuery = (filterTerms: Record<string, any> = {}): any => {
+  let filterQueries: Record<string, any>[] = [];
+
+  Object.entries(filterTerms).forEach(([field, fieldValue]) => {
+    if (Array.isArray(fieldValue) && fieldValue.length === 1) {
+      fieldValue = fieldValue[0];
+    }
+
+    if (!Array.isArray(fieldValue)) {
+      let term: Record<string, any> = { match: {} };
+      term.match[field] = fieldValue;
+      filterQueries.push(term);
+    } else {
+      let filter: Record<string, any> = { bool: { should: [] } };
+      fieldValue.forEach((val: string) => {
+        let term: Record<string, any> = { match: {} };
+        term.match[field] = val;
+        filter.bool.should.push(term);
+      });
+      filterQueries.push(filter);
+    }
+  });
+
+  return filterQueries;
 };
 
 export const getAggQuery = (

@@ -3,6 +3,7 @@
   "version": "1.6.0",
   "private": true,
   "author": "NASA JPL",
+  "license": "SEE LICENSE IN LICENSE.md",
   "description": "DARPA Safedocs file observatory",
   "homepage": "./",
   "main": "./public/electron.js",

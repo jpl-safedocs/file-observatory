@@ -76,6 +76,7 @@ const Header: FC = () => {
   const completionField = useStore((state) => state.completionField);
   const filterList = useStore((state) => state.filterList);
   const fetchFilterAggregations = useStore((state) => state.fetchFilterAggregations);
+  const fetchSigTerms = useStore((state) => state.fetchSigTerms);
   const activeViz = useStore((state) => state.activeViz);
   const [advancedSearchOpen, setAdvancedSearchOpen] = useStore((state) => [
     state.advancedSearchOpen,
@@ -83,6 +84,7 @@ const Header: FC = () => {
   ]);
   const [advancedSearchExpanded, setAdvancedSearchExpanded] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const allMappingFields = useStore((state) => state.allMappingFields);
 
   const [windowMaximized, setWindowMaximized] = useState(false);
 
@@ -94,8 +96,8 @@ const Header: FC = () => {
     // call submitSearch on refresh button click
     let queryDump = getSearchQuery(
       searchValue,
-      suggestionField,
-      completionField,
+      allMappingFields.includes(suggestionField) ? suggestionField : "",
+      allMappingFields.includes(completionField) ? completionField : "",
       groupedFilters,
       filterList,
       activeViz === "Data Viz"
@@ -103,14 +105,15 @@ const Header: FC = () => {
     setQuery(queryDump);
     setSearchTerm(searchValue);
     fetchFilterAggregations(filterList);
+    fetchSigTerms();
   };
 
   useEffect(() => {
     if (!advancedSearchOpen) {
       let queryDump = getSearchQuery(
         searchValue,
-        suggestionField,
-        completionField,
+        allMappingFields.includes(suggestionField) ? suggestionField : "",
+        allMappingFields.includes(completionField) ? completionField : "",
         groupedFilters,
         filterList,
         activeViz === "Data Viz"

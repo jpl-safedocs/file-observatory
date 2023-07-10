@@ -33,7 +33,7 @@ import https from "https";
 
 import { configurePersist } from "zustand-persist";
 
-import { getAggQuery, getGroupedFilters, getSearchQuery } from "./modifiers";
+import { getAggQuery, getGroupedFilters, getSearchQuery, getFilterQuery } from "./modifiers";
 
 const package_json = require("../../package.json");
 const path = window.require("path");
@@ -153,6 +153,7 @@ export type Store = {
   filterList: string[];
   allMappingFields: string[];
   indexMapping: Record<string, any>;
+  indexMappingFields: Record<string, any>;
   fetchIndexMapping: () => void;
   sigTerms: any;
   fetchSigTerms: () => void;
@@ -209,6 +210,7 @@ export const persistentProps: NonFunctionPropertyNames<Store>[] = [
   "activePage",
   "activeViz",
   "indexMapping",
+  "indexMappingFields",
   "allMappingFields",
   "filterList",
   "nonVisibleFields",
@@ -298,7 +300,7 @@ const useStore = create<Store>(
       validIndex: false,
       loadingIndex: false,
       loadingIndexMapping: false,
-      fetchAxios: (timed=false) => {
+      fetchAxios: (timed = false) => {
         if (!get().esPassword || !get().esUsername) {
           return axios;
         }
@@ -315,7 +317,7 @@ const useStore = create<Store>(
             config.headers["request-start-time"] = performance.now();
             return config;
           });
-  
+
           authAxios.interceptors.response.use((response) => {
             // @ts-ignore
             const duration = performance.now() - (response.config.headers["request-start-time"] as number);
@@ -425,6 +427,8 @@ const useStore = create<Store>(
       suggestionField: "q_keys",
       setSuggestionField: (suggestionField) => {
         let query = get().query;
+
+        // If suggestion field is already part of the query, then refresh it and re-fetch so outdated results aren't shown. Else wait for search.
         if (query["suggest"]) {
           query = getSearchQuery(
             get().searchTerm,
@@ -446,6 +450,8 @@ const useStore = create<Store>(
       completionField: "q_parent_and_keys",
       setCompletionField: (completionField) => {
         let query = get().query;
+
+        // If completion field is already part of the query, then refresh it and re-fetch so outdated results aren't shown. Else wait for search.
         if (query["suggest"]) {
           query = getSearchQuery(
             get().searchTerm,
@@ -508,8 +514,8 @@ const useStore = create<Store>(
               documentError: false,
             });
             if (get().activeViz === "Data Viz" && responseDocuments?.suggest) {
-              let suggestions = responseDocuments?.suggest?.["similarity-suggestion"][0];
-              if (suggestions && suggestions.options.length) {
+              let suggestions = responseDocuments?.suggest?.["similarity-suggestion"]?.[0];
+              if (suggestions && suggestions.options.length && get().suggestionField) {
                 let options = [suggestions.text, ...suggestions.options.map((option: any) => option.text)];
 
                 let countQuery: Record<string, any> = {
@@ -539,9 +545,9 @@ const useStore = create<Store>(
                 set({ suggestions: {} });
               }
 
-              let completions = responseDocuments?.suggest?.["completion"][0];
+              let completions = responseDocuments?.suggest?.["completion"]?.[0];
 
-              if (completions?.options && completions.options.length > 0) {
+              if (completions?.options && completions.options.length > 0 && get().completionField) {
                 Promise.all(
                   completions.options.map((option: any) => {
                     let optionQuery: Record<string, any> = {
@@ -569,7 +575,7 @@ const useStore = create<Store>(
                       let responseDocuments = get().useEsAPI ? response.data.documents : response.data;
 
                       return {
-                        completion: completions.options[i].text,
+                        completion: completions.options[i]?.text,
                         count: responseDocuments.hits.total.value,
                       };
                     })
@@ -628,6 +634,7 @@ const useStore = create<Store>(
       setSelectedDocuments: (selectedDocuments) => set({ selectedDocuments }),
       filterList: [],
       allMappingFields: [],
+      indexMappingFields: {},
       indexMapping: {},
       sigTerms: {},
       fetchSigTerms: () => {
@@ -635,12 +642,8 @@ const useStore = create<Store>(
         let searchTerm = get().searchTerm;
         if (!sigTermsField || !searchTerm) return;
 
-        let query = {
-          query: {
-            query_string: {
-              query: searchTerm, // "q_keys:/.FontDescriptor/"
-            },
-          },
+        let query: Record<string, any> = {
+          query: {},
           size: 0,
           aggregations: {
             my_sample: {
@@ -660,6 +663,27 @@ const useStore = create<Store>(
             },
           },
         };
+
+        let activeFilters = get().activeFilters;
+        if (activeFilters && activeFilters.length > 0) {
+          query.query = {
+            bool: {
+              must: {
+                query_string: {
+                  query: searchTerm, // "q_keys:/.FontDescriptor/"
+                },
+              },
+              filter: getFilterQuery(getGroupedFilters(activeFilters))
+            }
+          }
+        } else {
+          query.query = {
+            query_string: {
+              query: searchTerm, // "q_keys:/.FontDescriptor/"
+            },
+          }
+        }
+
         let searchURL = get().getSearchURL();
         if (!searchURL) {
           set({ sigTerms: {} });
@@ -683,10 +707,20 @@ const useStore = create<Store>(
           return;
         }
 
+        let indexMappingFields = get().indexMappingFields;
         let skippedList: string[] = [];
         let requests = [];
+
         for (let i = 0; i < fields.length; i += 10) {
-          let aggQuery = getAggQuery(groupedFilters, fields.slice(i, i + 10), get().searchTerm, queryOverride);
+          let fieldsSlice = fields.slice(i, i + 10).map(field => {
+            // We know all these fields support keyword, so if the type isn't keyword, then it has a subfield set to keyword
+            if (indexMappingFields[field] && indexMappingFields[field]["type"] !== "keyword") {
+              return `${field}.keyword`;
+            } else {
+              return field;
+            }
+          });
+          let aggQuery = getAggQuery(groupedFilters, fieldsSlice, get().searchTerm, queryOverride);
           aggQuery.size = 0;
 
           requests.push(axiosInstance
@@ -838,6 +872,7 @@ const useStore = create<Store>(
               .map(([field, _]) => field);
 
             set({
+              indexMappingFields: mapping,
               indexMapping: get().useEsAPI ? response.data : { mapping: response.data },
               filterList,
               allMappingFields,
@@ -850,6 +885,7 @@ const useStore = create<Store>(
           })
           .catch(() => {
             set({
+              indexMappingFields: {},
               indexMapping: {},
               filterList: [],
               allMappingFields: [],
@@ -1008,6 +1044,7 @@ const useStore = create<Store>(
           set(validConfig as any);
         } else {
           set({
+            indexMappingFields: {},
             indexMapping: {},
             filterList: [],
             allMappingFields: [],
@@ -1058,6 +1095,7 @@ const useStore = create<Store>(
           activePage: 3,
           activeViz: "Data Viz",
           indexMapping: {},
+          indexMappingFields: {},
           allMappingFields: [],
           filterList: [],
           nonVisibleFields: [],
